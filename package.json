@@ -1,0 +1,15 @@
+{
+  "name": "name-lookup-tool",
+  "version": "1.0.0",
+  "description": "A tool to check GitHub username availability and name popularity score",
+  "type": "module",
+  "main": "check_popularity_score.js",
+  "scripts": {
+    "start": "node check_popularity_score.js"
+  },
+  "dependencies": {
+    "puppeteer": "^23.8.0"
+  },
+  "author": "Your Name",
+  "license": "MIT"
+}
