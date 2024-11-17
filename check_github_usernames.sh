@@ -1,7 +1,6 @@
-
 #!/bin/bash
 
-# Define the cache file for GitHub lookups
+# Define the cache file for GitHub username lookups
 github_cache_file="github_lookup_cache.txt"
 touch "$github_cache_file"
 
@@ -18,35 +17,43 @@ update_github_cache() {
     echo "$name:$status" >> "$github_cache_file"
 }
 
-# Function to check GitHub availability (case-insensitive)
-check_github_username() {
+# Function to check if a GitHub username is available (case-insensitive)
+check_github_availability() {
     local name=$1
     name_lower=$(echo "$name" | tr '[:upper:]' '[:lower:]')
     cached_result=$(check_github_cache "$name_lower")
 
     if [ -n "$cached_result" ]; then
         status=$(echo "$cached_result" | cut -d':' -f2)
+        echo "GitHub availability for '$name': $status (cached)"
+         # Add to available names if it's available
         if [ "$status" == "available" ]; then
-            echo "✅ Available (cached): $name"
-        else
-            echo "❌ Taken (cached): $name"
+            available_usernames+=("$name")
         fi
         return
     fi
 
-    response=$(curl -s -o /dev/null -w "%{http_code}" "https://github.com/$name_lower")
+    # Check GitHub username availability using the GitHub API
+    response=$(curl -s -o /dev/null -w "%{http_code}" "https://api.github.com/users/$name_lower")
 
-    if [ "$response" == "404" ]; then
-        echo "✅ Available: $name"
-        update_github_cache "$name_lower" "available"
+    # Determine the availability based on the response code
+    if [ "$response" -eq 404 ]; then
+        status="✅ Available"
     else
-        echo "❌ Taken: $name"
-        update_github_cache "$name_lower" "taken"
+        status="❌ Taken"
+    fi
+
+    echo "GitHub availability for '$name': $status"
+    update_github_cache "$name_lower" "$status"
+
+    # Add to available names if it's available
+    if [ "$status" == "✅ Available" ]; then
+        available_usernames+=("$name")
     fi
 }
 
 # Prompt user for input
-echo "Enter the names to check for GitHub availability (space or newline-separated). Press Ctrl + D to finish:"
+echo "Enter the names to check for GitHub username availability (space or newline-separated). Press Ctrl + D to finish:"
 names=()
 
 while IFS= read -r line; do
@@ -58,6 +65,16 @@ unique_names=($(echo "${names[@]}" | tr '[:upper:]' '[:lower:]' | tr ' ' '
 ' | sort -u | tr '
 ' ' '))
 
+# Array to hold the names that are available
+available_usernames=()
+
+# Check each name's GitHub availability
 for name in "${unique_names[@]}"; do
-    check_github_username "$name"
+    check_github_availability "$name"
+done
+
+# Print out the available usernames
+echo "✅ Available GitHub usernames:"
+for username in "${available_usernames[@]}"; do
+    echo "$username"
 done
